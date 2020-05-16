@@ -54,16 +54,18 @@ void setup()
   pinMode(ldac, OUTPUT);
   digitalWrite(dacsel, HIGH);
   pinMode(dacsel, OUTPUT);
-  calval = 255;
-  caldacset();
-  Serial.begin(9600);
+
   SPI.setBitOrder(MSBFIRST);
   SPI.setClockDivider(SPI_CLOCK_DIV8);
   SPI.begin();
+
+  Serial.begin(9600);
+
   // gets parame
   sensors.begin();
   sensors.setResolution(0x3F); // 10 bit resolution, < 300mSec to convert
-
+  calval = 255;
+  caldacset();
   get_stored_params();
 
   display.clear();
