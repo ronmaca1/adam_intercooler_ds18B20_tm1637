@@ -25,7 +25,7 @@ storedparamtype fahrenheit;
 
 // </end of settable parameters>
 
-const byte ONE_WIRE_BUS = 7;
+const byte ONE_WIRE_BUS = A4;
 
 TM1637Display display(CLK, DIO);
 
@@ -60,7 +60,7 @@ void setup()
   sCmd.addCommand("HELP", show_help);
   sCmd.addCommand("PSET", print_current_settings);
   sCmd.setDefaultHandler(unrecognized);
-}
+}///////////////////////////// end of setup //////////////////////////////////
 
 void loop()
 {
@@ -81,9 +81,10 @@ void loop()
   {
     sensors.requestTemperatures();
 
-    display.showNumberDecEx(((sensors.getTempFByIndex(0)) * 10), 0b00100000, false);
+    display.showNumberDecEx((((sensors.getTempFByIndex(0))-2) * 10), 0b00100000, false);
   }
 }
+//////////////////////////////////// end of loop ///////////////////////////////////
 
 // <helper functions for settings>
 
