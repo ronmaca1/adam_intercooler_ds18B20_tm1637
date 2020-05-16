@@ -1,6 +1,7 @@
 #include <SerialCommand.h>
 #include <EEPROM.h>
 #include <stdio.h>
+#include <SPI.h>
 #include <TM1637Display.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -16,6 +17,9 @@
 #define setr1Addr (setcalAddr + eepromparamsize)
 #define setcelorfahrAddr (setr1Addr + eepromparamsize)
 #define setbrightAddr (setcelorfahrAddr + eepromparamsize)
+// (use for MCP4901 single channel DAC)
+// VREF gain 1(EXT. Vref)
+#define MCP4901ACONFIGBITS 0x30
 
 typedef unsigned int storedparamtype;
 // <settable parameters>
@@ -24,15 +28,19 @@ storedparamtype brightval;
 storedparamtype fahrenheit;
 
 // </end of settable parameters>
-
+byte dacoutL = 0;
+byte dacoutH = 0;
+byte calval = 0;
 const byte ONE_WIRE_BUS = A4;
-
+const byte dacsel = 10;
+const byte ldac = 9;
 TM1637Display display(CLK, DIO);
 
 SerialCommand sCmd;
 
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
+void caldacset(void);
 
 void get_stored_params(void)
 {
@@ -42,7 +50,17 @@ void get_stored_params(void)
 
 void setup()
 {
+  digitalWrite(ldac, HIGH);
+  pinMode(ldac, OUTPUT);
+  digitalWrite(dacsel, HIGH);
+  pinMode(dacsel, OUTPUT);
+  calval = 255;
+  caldacset();
   Serial.begin(9600);
+  SPI.setBitOrder(MSBFIRST);
+  SPI.setClockDivider(SPI_CLOCK_DIV8);
+  SPI.begin();
+  // gets parame
   sensors.begin();
   sensors.setResolution(0x3F); // 10 bit resolution, < 300mSec to convert
 
@@ -60,7 +78,7 @@ void setup()
   sCmd.addCommand("HELP", show_help);
   sCmd.addCommand("PSET", print_current_settings);
   sCmd.setDefaultHandler(unrecognized);
-}///////////////////////////// end of setup //////////////////////////////////
+} ///////////////////////////// end of setup //////////////////////////////////
 
 void loop()
 {
@@ -81,7 +99,7 @@ void loop()
   {
     sensors.requestTemperatures();
 
-    display.showNumberDecEx((((sensors.getTempFByIndex(0))-2) * 10), 0b00100000, false);
+    display.showNumberDecEx((((sensors.getTempFByIndex(0)) - 2) * 10), 0b00100000, false);
   }
 }
 //////////////////////////////////// end of loop ///////////////////////////////////
@@ -237,4 +255,19 @@ void unrecognized(const char *command)
   Serial.println("");
   Serial.println(F("Unknown command"));
   Serial.println("");
+}
+
+void caldacset(void)
+{
+  dacoutH = MCP4901ACONFIGBITS | ((calval >> 4) & 0x0F);
+  dacoutL = (calval << 4) & 0xF0;
+  digitalWrite(dacsel, LOW);
+  delayMicroseconds(10); // let the DAC get ready
+  SPI.transfer(dacoutH);
+  SPI.transfer(dacoutL);
+  delayMicroseconds(10); // let the DAC settle
+  digitalWrite(dacsel, HIGH);
+  digitalWrite(ldac, LOW);
+  delayMicroseconds(10);
+  digitalWrite(ldac, HIGH);
 }
